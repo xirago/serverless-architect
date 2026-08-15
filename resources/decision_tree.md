@@ -1,32 +1,25 @@
 # Enterprise Serverless Architecture: AWS vs. GCP Decision Framework
 
-## 1. Enterprise Master Decision Tree
+## 1. Enterprise Master Decision Tree (Capability & Requirements Driven)
 
 ```mermaid
 flowchart TD
-    Start(["🏢 Start: Enterprise Application Scope"]) --> Q_Cloud{"Target Cloud Ecosystem?"}
+    Start(["🏢 Start: Enterprise Application Scope"]) --> Q_Archetype{"Application Archetype & Protocol Model?"}
 
-    %% Cloud Footprint Selection
-    Q_Cloud -->|"Google Cloud (GCP)"| Q_GCP_Ingress{"User Audience & Ingress Boundary?"}
-    Q_Cloud -->|"Amazon Web Services (AWS)"| Q_AWS_Ingress{"User Audience & Ingress Boundary?"}
-    Q_Cloud -->|"Multi-Cloud / Greenfield Evaluation"| Q_Multi_Proto{"Application Interaction Model?"}
+    %% Branch 1: Internal AI / Fullstack
+    Q_Archetype -->|"Internal Full-Stack / AI Chat & SSE Streaming"| Res_Internal["<b>Internal Employee Application (Zero-Trust SSO)</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP Cloud Run</b> 🏆<br/>• ALB + Serverless NEG + Identity-Aware Proxy (IAP)<br/>• Multi-concurrency (up to 1,000 req/instance) for parallel SSE streams<br/>• Direct VPC Egress to private subnets<br/>• Secret Manager + Startup CPU Boost<br/>─────────────────────────────────────<br/><b>AWS Lambda / ECS Fargate</b><br/>• Internal ALB + OIDC (Okta / Entra ID)<br/>• Lambda Response Streaming or ECS Fargate behind ALB<br/>• Private Subnet ENI attachments + AWS Secrets Manager"]
 
-    %% GCP Ingress Branches
-    Q_GCP_Ingress -->|"Internal Employees (SSO / Zero Trust)"| Res_GCP_Internal["<b>GCP Cloud Run behind Application Load Balancer + IAP</b> 🏆<br/>• ALB + Serverless NEG + Identity-Aware Proxy (IAP)<br/>• Enforces Google Workspace / Okta / Entra ID SSO<br/>• Direct VPC Egress to internal enterprise subnets<br/>• Secret Manager injection via Workload Identity<br/>• Ingress locked to internal-and-cloud-load-balancing"]
-    Q_GCP_Ingress -->|"Public Web / Customers"| Q_GCP_Proto{"Protocol Model?"}
-    Q_GCP_Proto -->|"HTTP / SSE AI Streaming"| Res_GCP_Public_SSE["<b>GCP Cloud Run + Cloud Armor (WAF)</b><br/>• Multi-concurrency (up to 1,000 req/instance) for AI SSE streams<br/>• Startup CPU Boost for fast container cold-starts<br/>• Scale-to-zero in Dev / min-instances=1 in Prod"]
-    Q_GCP_Proto -->|"Bi-directional WebSockets / gRPC"| Res_GCP_Public_WS["<b>GCP Cloud Run (Native WebSockets)</b><br/>• Full bi-directional WebSocket support up to 60-min timeout<br/>• Set <code>no-cpu-throttling</code> if maintaining idle socket background state"]
-    Q_GCP_Ingress -->|"Batch Job / Scraper (15m+)"| Res_GCP_Batch["<b>GCP Cloud Run Jobs</b><br/>• Up to 24-hour execution timeout<br/>• Egress routed through Cloud NAT with static external IP"]
+    %% Branch 2: WebSockets / Bi-directional
+    Q_Archetype -->|"Real-Time Bi-Directional WebSockets / gRPC"| Res_WS["<b>Real-Time Interactive Service</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP Cloud Run (Native WebSockets)</b> 🏆<br/>• Built-in WebSocket & HTTP/2 support up to 60-min timeout<br/>• Single container endpoint; <code>no-cpu-throttling</code> for idle socket state<br/>─────────────────────────────────────<br/><b>AWS API Gateway WebSocket API or ECS Fargate</b><br/>• API Gateway manages persistent socket connections with stateless Lambda<br/>• Or stateful long-lived container tasks on ECS Fargate behind ALB"]
 
-    %% AWS Ingress Branches
-    Q_AWS_Ingress -->|"Internal Employees (SSO / Zero Trust)"| Res_AWS_Internal["<b>AWS ECS Fargate or Lambda behind Internal ALB + OIDC</b> 🏆<br/>• ALB intercepts HTTP and authenticates with Okta / Entra ID<br/>• Hyperplane ENI attachments into private VPC subnets<br/>• AWS Secrets Manager + KMS encryption<br/>• Zero public internet exposure"]
-    Q_AWS_Ingress -->|"Public Web / Customers"| Q_AWS_Proto{"Protocol Model?"}
-    Q_AWS_Proto -->|"HTTP / SSE AI Streaming"| Res_AWS_Public_SSE["<b>AWS Lambda (Web Adapter) or ECS Fargate + AWS WAF</b><br/>• Response streaming via Lambda Function URLs / ALB<br/>• AWS WAF attached to CloudFront / ALB<br/>• Scale-to-zero in Dev / Provisioned Concurrency in Prod"]
-    Q_AWS_Proto -->|"Bi-directional WebSockets"| Res_AWS_Public_WS["<b>AWS API Gateway WebSocket API + Lambda or ECS Fargate</b><br/>• API Gateway manages persistent socket connections<br/>• Translates events ($connect, $disconnect) to stateless Lambda invocations<br/>• Or long-lived stateful containers on ECS Fargate behind ALB"]
-    Q_AWS_Ingress -->|"Batch Job / Scraper (15m+)"| Res_AWS_Batch["<b>AWS ECS Tasks on Fargate</b><br/>• Triggered via EventBridge / Step Functions<br/>• Overcomes Lambda 15-min timeout<br/>• Egress through AWS NAT Gateway with Elastic IP"]
+    %% Branch 3: Event-Driven Webhooks / SaaS Integrator
+    Q_Archetype -->|"Event-Driven Webhook / SaaS API Integrator"| Res_Webhook["<b>Asynchronous Event Handler & SaaS Integrator</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP Cloud Run + Cloud Tasks</b> 🏆<br/>• Fast 200 OK webhook response (<3s)<br/>• Cloud Tasks push queue with native rate-limit dispatch to protect SaaS APIs<br/>─────────────────────────────────────<br/><b>AWS API Gateway + Lambda + SQS</b><br/>• API Gateway synchronous webhook receipt<br/>• Amazon SQS buffering with Lambda Reserved Concurrency limits"]
 
-    %% Multi-Cloud Static
-    Q_Multi_Proto -->|"Static Enterprise Portal"| Res_Static_Ent["<b>Static Enterprise Frontend</b><br/>• GCP: <code>Cloud Storage + Cloud CDN + Cloud Armor</code><br/>• AWS: <code>S3 + CloudFront + Origin Access Control (OAC) + WAF</code>"]
+    %% Branch 4: Batch / Long Running (>15m)
+    Q_Archetype -->|"Batch Data Sync / Scraper (>15 min)"| Res_Batch["<b>Long-Running Scheduled or Triggered Task</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP Cloud Run Jobs</b><br/>• Up to 24-hour execution timeout<br/>• Egress routed via Cloud NAT with static external IP<br/>• Scales to $0 immediately upon job completion<br/>─────────────────────────────────────<br/><b>AWS ECS Tasks on Fargate</b> 🏆<br/>• No execution time limit (overcomes Lambda 15-min cap)<br/>• Triggered via EventBridge / Step Functions<br/>• Egress through NAT Gateway with Elastic IP"]
+
+    %% Branch 5: Static Portal
+    Q_Archetype -->|"Static Frontend Portal"| Res_Static["<b>Static Enterprise Frontend</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP</b>: Cloud Storage + Cloud CDN + Cloud Armor<br/><b>AWS</b>: S3 + CloudFront + Origin Access Control (OAC) + AWS WAF"]
 ```
 
 ---
@@ -38,35 +31,31 @@ flowchart TD
     DB_Start(["🔒 Enterprise Data & Storage Connectivity"]) --> DB_Target{"Data Access Pattern?"}
 
     %% Private Internal Database
-    DB_Target -->|"Existing Corporate Database in Private VPC (PostgreSQL, Oracle, SQL Server)"| DB_VPC_Cloud{"Target Cloud?"}
-    DB_VPC_Cloud -->|"Google Cloud"| Res_GCP_VPC["<b>Direct VPC Egress + Cloud SQL Auth Proxy</b><br/>• Connects Cloud Run directly to VPC subnet without connector VM costs<br/>• Enforces Private Service Connect (PSC) & IAM Database Authentication<br/>• Mandatory PgBouncer / Connection Pooler"]
-    DB_VPC_Cloud -->|"AWS"| Res_AWS_VPC["<b>VPC Subnet Attachment (ENI) + AWS RDS Proxy</b><br/>• Lambda / ECS runs inside private subnets<br/>• Enforces AWS RDS Proxy to manage connection pooling during scale bursts<br/>• IAM Database Authentication (no database passwords in code)"]
+    DB_Target -->|"Existing Corporate Database in Private VPC (PostgreSQL, Oracle, SQL Server)"| Res_VPC["<b>Private Corporate Database Access</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP</b>: Direct VPC Egress + Cloud SQL Auth Proxy / PgBouncer<br/>• Direct VPC Egress directly into private subnets (no connector VM)<br/>• Private Service Connect (PSC) + IAM Database Authentication<br/>─────────────────────────────────────<br/><b>AWS</b>: VPC Subnet Attachment (Hyperplane ENI) + AWS RDS Proxy<br/>• Lambda / ECS attached to private subnets with Security Groups<br/>• AWS RDS Proxy manages connection pooling during scale bursts"]
 
     %% Cloud-Native Managed Serverless DB
-    DB_Target -->|"Managed Cloud Serverless Database"| DB_Native_Cloud{"Target Cloud?"}
-    DB_Native_Cloud -->|"Google Cloud"| Res_GCP_DB["• <b>Cloud SQL (PostgreSQL/MySQL)</b>: Private IP only with automated PITR<br/>• <b>Cloud Firestore</b>: Enforce sharding for counters (1 write/sec per doc limit)"]
-    DB_Native_Cloud -->|"AWS"| Res_AWS_DB["• <b>Aurora Serverless v2</b>: Private subnets with auto-scaling ACUs<br/>• <b>Amazon DynamoDB</b>: Single-table design + Point-in-Time Recovery (PITR)"]
+    DB_Target -->|"Managed Cloud Serverless Database"| Res_Managed_DB["<b>Dedicated Managed Cloud DB</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP</b>: Cloud SQL (PostgreSQL/MySQL) or Cloud Firestore (sharded counters)<br/><b>AWS</b>: Aurora Serverless v2 or Amazon DynamoDB (Single-table + PITR)"]
 
     %% Large Payload Direct Storage
-    DB_Target -->|"Large File Uploads / Downloads (>10 MB)"| Res_Direct_Storage["<b>Direct Cloud Storage with Signed URLs</b><br/>• GCP: <code>GCS Signed URLs</code> (bypasses Cloud Run 32 MB request cap)<br/>• AWS: <code>S3 Pre-Signed URLs</code> (bypasses Lambda / API Gateway 6 MB cap)<br/>• Enable VPC Gateway Endpoints to eliminate NAT Gateway transfer fees ($0.045/GB)"]
+    DB_Target -->|"Large File Uploads / Downloads (>10 MB)"| Res_Direct_Storage["<b>Direct Storage with Signed URLs (Payload Bypass)</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>GCP</b>: GCS Signed URLs (bypasses Cloud Run 32 MB HTTP cap)<br/><b>AWS</b>: S3 Pre-Signed URLs (bypasses Lambda / API Gateway 6 MB cap)<br/>• Enable VPC Gateway Endpoints / PSC to eliminate NAT Gateway transfer fees ($0.045/GB)"]
 ```
 
 ---
 
 ## 3. Side-by-Side Enterprise Security & Governance Matrix
 
-| Enterprise Dimension | **Google Cloud Platform (GCP)** | **Amazon Web Services (AWS)** |
-| :--- | :--- | :--- |
-| **Zero-Trust SSO / IdP** | **ALB + Serverless NEG + Identity-Aware Proxy (IAP)** intercepts HTTP before hitting Cloud Run. Supports Google Workspace, Okta, Entra ID. | **Internal Application Load Balancer (ALB) OIDC** or **AWS Verified Access** authenticates against corporate IdP (Okta / Cognito / Entra ID). |
-| **Container Serverless Standard** | **Cloud Run**: Scales from 0 to 1,000+ instances; multi-concurrency (up to 1,000 req/instance); Startup CPU Boost. | **ECS Tasks on Fargate**: True container isolation, custom networking, long-running jobs. (App Runner for simpler PaaS setups). |
-| **Real-Time Protocols** | **Native WebSockets, HTTP/2, gRPC** supported out-of-the-box up to 60 minutes per connection. | **Amazon API Gateway WebSocket API** (stateless Lambda routing) or **ECS Fargate** (stateful socket server). |
-| **CPU Allocation Modes** | • `cpu-throttling=true` (Default, CPU disabled when idle)<br/>• `no-cpu-throttling` (CPU always allocated for background threads / sockets). | • Lambda: CPU tied strictly to active invocation.<br/>• ECS Fargate: Full continuous vCPU allocation. |
-| **Private VPC Connectivity** | **Direct VPC Egress** directly into subnet (no connector VM overhead) with Private Service Connect (PSC). | **VPC Configuration (Hyperplane ENI)** attached to private subnets with Security Groups. |
-| **NAT Cost Optimization** | Route traffic to GCP APIs via **Private Google Access / PSC**; Cloud NAT for static outbound IP. | Route traffic to S3/DynamoDB via free **VPC Gateway Endpoints**; Interface Endpoints (PrivateLink) to bypass $0.045/GB NAT fees. |
-| **Secrets Governance** | **GCP Secret Manager**: Mounted as environment variables via Workload Identity. | **AWS Secrets Manager / SSM Parameter Store**: Resolved via IAM execution role. |
-| **AI / GPU Acceleration** | **Cloud Run GPU** (Nvidia L4 GPUs) for serverless model inference with scale-to-zero. | **AWS SageMaker Serverless Inference** or **ECS Fargate with GPU**. |
-| **Audit Logging & Compliance** | **Cloud Audit Logs** (Admin & Data Access) streamed to BigQuery / SIEM. | **AWS CloudTrail** + **CloudWatch Logs** streamed to S3 / SIEM. |
-| **CI/CD Deployment Auth** | **Workload Identity Federation** (Keyless OIDC from GitLab CI / GitHub Actions). | **AWS IAM OpenID Connect (OIDC)** Provider for GitHub/GitLab CI. |
+| Enterprise Dimension | **Google Cloud Platform (GCP)** | **Amazon Web Services (AWS)** | Objective Capability Driver |
+| :--- | :--- | :--- | :--- |
+| **Zero-Trust SSO / IdP** | **ALB + Serverless NEG + Identity-Aware Proxy (IAP)** intercepts HTTP before hitting Cloud Run. Supports Google Workspace, Okta, Entra ID. | **Internal Application Load Balancer (ALB) OIDC** or **AWS Verified Access** authenticates against corporate IdP (Okta / Cognito / Entra ID). | Both offer zero-trust SSO with no public ingress. GCP IAP has tighter serverless integration via Serverless NEGs. |
+| **Container Serverless Standard** | **Cloud Run**: Scales from 0 to 1,000+ instances; multi-concurrency (up to 1,000 req/instance); Startup CPU Boost. | **ECS Tasks on Fargate**: True container isolation, custom networking, long-running jobs. (App Runner for simpler PaaS setups). | Cloud Run provides sub-second container scale-out; ECS Fargate provides full VM container isolation and unlimited run times. |
+| **Real-Time Protocols** | **Native WebSockets, HTTP/2, gRPC** supported out-of-the-box up to 60 minutes per connection. | **Amazon API Gateway WebSocket API** (stateless Lambda routing) or **ECS Fargate** (stateful socket server). | Cloud Run enables native WebSockets in a single container without API Gateway translation. |
+| **CPU Allocation Modes** | • `cpu-throttling=true` (Default, CPU disabled when idle)<br/>• `no-cpu-throttling` (CPU always allocated for background threads / sockets). | • Lambda: CPU tied strictly to active invocation.<br/>• ECS Fargate: Full continuous vCPU allocation. | Cloud Run toggle allows continuous CPU without paying for dedicated VMs. |
+| **Private VPC Connectivity** | **Direct VPC Egress** directly into subnet (no connector VM overhead) with Private Service Connect (PSC). | **VPC Configuration (Hyperplane ENI)** attached to private subnets with Security Groups. | Both provide low-latency sub-millisecond private VPC subnet connectivity. |
+| **NAT Cost Optimization** | Route traffic to GCP APIs via **Private Google Access / PSC**; Cloud NAT for static outbound IP. | Route traffic to S3/DynamoDB via free **VPC Gateway Endpoints**; Interface Endpoints (PrivateLink) to bypass $0.045/GB NAT fees. | VPC Gateway Endpoints on AWS and PGA on GCP eliminate high NAT processing fees. |
+| **Secrets Governance** | **GCP Secret Manager**: Mounted as environment variables via Workload Identity. | **AWS Secrets Manager / SSM Parameter Store**: Resolved via IAM execution role. | Both integrate with IAM for dynamic runtime secrets resolution without hardcoding. |
+| **AI / GPU Acceleration** | **Cloud Run GPU** (Nvidia L4 GPUs) for serverless model inference with scale-to-zero. | **AWS SageMaker Serverless Inference** or **ECS Fargate with GPU**. | Cloud Run GPU scales custom open-weight models to zero when idle. |
+| **Audit Logging & Compliance** | **Cloud Audit Logs** (Admin & Data Access) streamed to BigQuery / SIEM. | **AWS CloudTrail** + **CloudWatch Logs** streamed to S3 / SIEM. | Full non-repudiation and audit logging on both platforms. |
+| **CI/CD Deployment Auth** | **Workload Identity Federation** (Keyless OIDC from GitLab CI / GitHub Actions). | **AWS IAM OpenID Connect (OIDC)** Provider for GitHub/GitLab CI. | Keyless CI/CD authentication on both clouds. |
 
 ---
 
