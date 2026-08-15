@@ -2,7 +2,7 @@
 
 A vendor-agnostic, enterprise-grade agent skill for diagnosing, selecting, and architecting serverless hosting platforms across **Amazon Web Services (AWS)** and **Google Cloud Platform (GCP)**.
 
-Designed to guide product teams, platform engineers, and innovation leads through turning "vibe-coded" prototypes, full-stack web applications, AI backends, real-time streaming services, and background workers into secure, enterprise-compliant architectures.
+Assumes AWS and GCP are equally valid cloud providers and evaluates hosting options **solely on technical capabilities, architectural trade-offs, scalability limits, and operational complexity** without asking the user to choose or favor a specific vendor upfront.
 
 ---
 
@@ -64,8 +64,8 @@ Inject `SKILL.md` and `resources/decision_tree.md` directly into your system pro
 
 ## 🎯 What the Skill Does (Advisory Role)
 
-1. **Conducts a Non-Technical Diagnostic Interview**: Asks plain-English, outcome-oriented questions (1–2 at a time) to evaluate cloud footprint, audience, protocol requirements, data topology, and throughput.
+1. **Conducts a Non-Technical Diagnostic Interview**: Asks plain-English, outcome-oriented questions (1–2 at a time) across 4 core dimensions: user audience & security boundary, application protocol & interaction model, internal data connectivity & storage, and throughput/SLA. **Does not ask the user to select or favor a cloud provider upfront.**
 2. **Evaluates Enterprise Guardrails**: Enforces Zero-Trust SSO (GCP ALB + Serverless NEG + IAP / AWS ALB + OIDC), Direct VPC Egress for private databases, Secrets Management, and CMEK encryption.
-3. **Applies Multi-Cloud Decision Logic**: Evaluates AWS (ECS Fargate, Lambda with Web Adapter, API Gateway WebSockets) vs. GCP (Cloud Run, Cloud Run Jobs, Cloud Run GPU).
+3. **Applies Capability & Limitation Decision Logic**: Objectively evaluates AWS (ECS Fargate, Lambda with Web Adapter, API Gateway WebSockets, SQS) vs. GCP (Cloud Run, Cloud Run Jobs, Cloud Run GPU, Cloud Tasks) based on technical limits, protocols, and concurrency.
 4. **Highlights Scalability Bottlenecks & FinOps Traps**: Audits hard limits, regional concurrency caps, NAT Gateway bandwidth costs ($0.045/GB), RDBMS connection limits, and downstream SaaS API rate limits.
-5. **Delivers Enterprise Architecture Specifications**: Outlines executive verdicts, security boundaries, compute sizing, runtime flags (`cpu-throttling`, Startup CPU Boost), and multi-cloud equivalency mapping.
+5. **Delivers Enterprise Architecture Specifications**: Outlines dual-cloud executive verdicts, security boundaries, compute sizing, runtime flags (`cpu-throttling`, Startup CPU Boost), and side-by-side AWS/GCP implementation blueprints.
